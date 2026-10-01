@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>不動産鑑定評価基準 暗記テストアプリ</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/7.0.0/diff.min.js"></script>
+    
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 10px 20px; 
+        }
+        h1 {
+            font-size: 1.3em;
+            margin: 5px 0 10px 0;
+        }
+        h2 {
+            font-size: 1em; 
+            margin: 10px 0 5px 0;
+            color: #333;
+        }
+        p {
+            margin: 5px 0;
+        }
+        /* プルダウンメニューの見た目を調整 */
+        select {
+            font-size: 1.2em;
+            padding: 5px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        #user-answer {
+            font-size: 1.3em; 
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            font-size: 1.1em;
+            padding: 8px 12px;
+            margin-right: 10px;
+            margin-top: 5px;
+        }
+        #result-area {
+            font-size: 1.2em; 
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        #model-answer-area {
+            font-size: 1.2em;
+            line-height: 1.6;
+            color: #000000; 
+            margin-bottom: 60px; 
+        }
+        #feedback-area {
+            display: none;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>鑑定理論 暗記テスト</h1>
+    
+    <h2>【お題を選ぶ】</h2>
+    <!-- ここが新しく追加したプルダウンメニューです -->
+    <select id="question-select">
+        <option value="0">原価法</option>
+        <option value="1">取引事例比較法</option>
+        <option value="2">収益還元法</option>
+    </select>
+
+    <h2>【あなたの解答】</h2>
+    <textarea id="user-answer" rows="4" placeholder="ここに解答を入力、または音声入力"></textarea>
+    
+    <div>
+        <button id="start-voice">🎤 音声入力スタート</button>
+        <button id="check-answer">採点する</button>
+    </div>
+
+    <div id="feedback-area">
+        <h2>【採点結果】</h2>
+        <div id="result-area"></div>
+        
+        <h2>【模範解答】</h2>
+        <div id="model-answer-area"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
