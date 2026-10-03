@@ -2693,3 +2693,41 @@ document.getElementById("check-answer").addEventListener("click", function() {
     document.getElementById("model-answer-area").innerHTML = "<p><strong>【模範解答】</strong><br>" + currentModelAnswer + "</p>";
     document.getElementById("feedback-area").style.display = "block";
 });
+// ==================================================
+// 5. データ引継ぎ（エクスポート / インポート）機能
+// ==================================================
+
+// 📤 書き出し（コピー）
+document.getElementById("export-btn").addEventListener("click", function() {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data || data === "{}") {
+        alert("書き出す学習履歴がありません。");
+        return;
+    }
+    
+    // クリップボードにコピーする
+    navigator.clipboard.writeText(data).then(() => {
+        alert("✅ 学習履歴をコピーしました！\n\n別の端末（iPad等）を開き、「読み込む」ボタンを押して貼り付けてください。");
+    }).catch(err => {
+        // コピーに失敗した場合の予備ルート
+        prompt("以下のテキストをすべてコピーしてください:", data);
+    });
+});
+
+// 📥 読み込み（ペースト）
+document.getElementById("import-btn").addEventListener("click", function() {
+    const input = prompt("他の端末でコピーした学習履歴のテキストを、下の枠に貼り付け（ペースト）してください。");
+    
+    if (input) {
+        try {
+            // 正しいデータ形式（JSON）かどうかのチェック
+            JSON.parse(input);
+            // ローカルストレージを上書き
+            localStorage.setItem(STORAGE_KEY, input);
+            alert("🎉 学習履歴を無事に復元しました！画面を更新します。");
+            location.reload(); // 画面をリロードして反映
+        } catch(e) {
+            alert("❌ データの形式が正しくありません。正しくコピーできているか確認してください。");
+        }
+    }
+});
