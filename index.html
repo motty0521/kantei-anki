@@ -10,6 +10,8 @@
         body {
             font-family: sans-serif;
             margin: 10px 20px; 
+            background-color: #ffffff;
+            color: #333333;
         }
         h1 {
             font-size: 1.3em;
@@ -18,7 +20,7 @@
         h2 {
             font-size: 1em; 
             margin: 10px 0 5px 0;
-            color: #333;
+            color: #333333;
         }
         p {
             margin: 5px 0;
@@ -64,17 +66,18 @@
     
     <h2>【お題を選ぶ】</h2>
 
-    <!-- ここから追加：絞り込みメニュー -->
-    <label for="importance-filter">重要度で絞り込み:</label>
+    <!-- 学習モード・重要度での絞り込みメニュー -->
+    <label for="importance-filter">学習モード・重要度で絞り込み:</label>
     <select id="importance-filter" style="margin-bottom: 10px;">
         <option value="all">すべて表示</option>
+        <option value="new">新規問題（未解答）</option> 
+        <option value="review">復習モード（忘却曲線対応）</option> 
         <option value="S">Sランクのみ</option>
         <option value="A">Aランクのみ</option>
         <option value="B">Bランクのみ</option>
         <option value="C">Cランクのみ</option>
     </select>
     <br>
-    <!-- ここまで追加 -->
 
     <label for="question-select">問題を選択:</label>
     <select id="question-select">
