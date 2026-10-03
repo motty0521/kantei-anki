@@ -2050,7 +2050,7 @@ const questionData = [
 ];
 
 // --------------------------------------------------
-// 2. プルダウンメニューの自動生成と章分け
+// 2. プルダウンメニューの自動生成と章分け・絞り込み機能
 // --------------------------------------------------
 function getChapter(id) {
     if (id >= 1 && id <= 19) return "総論1";
@@ -2069,30 +2069,70 @@ function getChapter(id) {
 }
 
 const questionSelect = document.getElementById("question-select");
-questionSelect.innerHTML = ""; // 古い選択肢を一旦消去
+const importanceFilter = document.getElementById("importance-filter"); // 絞り込み用メニューを取得
+let currentModelAnswer = "";
 
-let currentChapter = "";
-let currentOptGroup = null;
+// プルダウンを生成する関数（絞り込みランクを引数で受け取る）
+function generateDropdown(filterRank) {
+    questionSelect.innerHTML = ""; // 古い選択肢を一旦消去
+    let currentChapter = "";
+    let currentOptGroup = null;
+    let firstValidIndex = -1; // 絞り込んだ後の最初の問題を記憶する用
 
-questionData.forEach((data, index) => {
-    data.id = index + 1;
-    data.chapter = getChapter(data.id);
+    questionData.forEach((data, index) => {
+        // IDと章の自動付与（絞り込みに関わらず必ず実行）
+        data.id = index + 1;
+        data.chapter = getChapter(data.id);
 
-    if (data.chapter !== currentChapter) {
-        currentOptGroup = document.createElement("optgroup");
-        currentOptGroup.label = `■ ${data.chapter}`;
-        questionSelect.appendChild(currentOptGroup);
-        currentChapter = data.chapter;
+        // 絞り込み判定（"all"以外で、ランクが一致しない問題はスキップ）
+        if (filterRank !== "all" && data.importance !== filterRank) {
+            return;
+        }
+
+        // 条件に合った最初の問題を記録
+        if (firstValidIndex === -1) {
+            firstValidIndex = index;
+        }
+
+        if (data.chapter !== currentChapter) {
+            currentOptGroup = document.createElement("optgroup");
+            currentOptGroup.label = `■ ${data.chapter}`;
+            questionSelect.appendChild(currentOptGroup);
+            currentChapter = data.chapter;
+        }
+
+        const option = document.createElement("option");
+        option.value = index;
+        option.text = `ID:${data.id}【${data.importance}】${data.term}`;
+        currentOptGroup.appendChild(option);
+    });
+
+    // 絞り込みの結果、1問でも見つかった場合はその最初の問題の答えをセット
+    if (firstValidIndex !== -1) {
+        currentModelAnswer = questionData[firstValidIndex].answer;
+    } else {
+        currentModelAnswer = "";
+        const option = document.createElement("option");
+        option.text = "該当する問題がありません";
+        questionSelect.appendChild(option);
     }
+    
+    // 絞り込みを変えたら、入力欄と前回結果をリセット
+    document.getElementById("user-answer").value = "";
+    document.getElementById("feedback-area").style.display = "none";
+}
 
-    const option = document.createElement("option");
-    option.value = index;
-    option.text = `ID:${data.id}【${data.importance}】${data.term}`;
-    currentOptGroup.appendChild(option);
-});
+// アプリ起動時は「すべて表示」で生成
+generateDropdown("all");
 
-let currentModelAnswer = questionData[0].answer;
+// 絞り込みメニュー（重要度）が変更された時の処理
+if (importanceFilter) {
+    importanceFilter.addEventListener("change", function(e) {
+        generateDropdown(e.target.value); // 選ばれたランクで再生成
+    });
+}
 
+// 問題のプルダウンが変更された時の処理
 questionSelect.addEventListener("change", function(e) {
     const selectedIndex = e.target.value;
     currentModelAnswer = questionData[selectedIndex].answer;
@@ -2100,7 +2140,6 @@ questionSelect.addEventListener("change", function(e) {
     document.getElementById("user-answer").value = "";
     document.getElementById("feedback-area").style.display = "none";
 });
-
 // --------------------------------------------------
 // 3. 音声入力の仕組み
 // --------------------------------------------------
