@@ -2472,6 +2472,24 @@ function saveHistory(questionId, score) {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 }
+// ==================================================
+// 1. 学習履歴を管理する関数群
+// ==================================================
+const STORAGE_KEY = "kantei_study_history";
+
+function getHistory() {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+}
+
+function saveHistory(questionId, score) {
+    const history = getHistory();
+    history[questionId] = {
+        lastScore: score,
+        lastDate: Date.now() 
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
 
 // --------------------------------------------------
 // 2. プルダウンメニューの自動生成と章分け・絞り込み機能
