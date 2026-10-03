@@ -2454,6 +2454,24 @@ const questionData = [
     }
 
 ];
+// ==================================================
+// 1. 学習履歴を管理する関数群
+// ==================================================
+const STORAGE_KEY = "kantei_study_history";
+
+function getHistory() {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+}
+
+function saveHistory(questionId, score) {
+    const history = getHistory();
+    history[questionId] = {
+        lastScore: score,
+        lastDate: Date.now() 
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
 
 // --------------------------------------------------
 // 2. プルダウンメニューの自動生成と章分け・絞り込み機能
@@ -2475,27 +2493,48 @@ function getChapter(id) {
 }
 
 const questionSelect = document.getElementById("question-select");
-const importanceFilter = document.getElementById("importance-filter"); // 絞り込み用メニューを取得
+const importanceFilter = document.getElementById("importance-filter"); 
 let currentModelAnswer = "";
 
-// プルダウンを生成する関数（絞り込みランクを引数で受け取る）
 function generateDropdown(filterRank) {
-    questionSelect.innerHTML = ""; // 古い選択肢を一旦消去
+    questionSelect.innerHTML = ""; 
     let currentChapter = "";
     let currentOptGroup = null;
-    let firstValidIndex = -1; // 絞り込んだ後の最初の問題を記憶する用
+    let firstValidIndex = -1; 
+
+    const history = getHistory();
 
     questionData.forEach((data, index) => {
-        // IDと章の自動付与（絞り込みに関わらず必ず実行）
-        data.id = index + 1;
         data.chapter = getChapter(data.id);
 
-        // 絞り込み判定（"all"以外で、ランクが一致しない問題はスキップ）
-        if (filterRank !== "all" && data.importance !== filterRank) {
+        if (filterRank === "review") {
+            const record = history[data.id];
+            if (!record) return; 
+            
+            const now = Date.now();
+            const elapsedHours = (now - record.lastDate) / (1000 * 60 * 60);
+            let needsReview = false;
+
+            if (record.lastScore <= 50) {
+                needsReview = true; 
+            } else if (record.lastScore < 80 && elapsedHours >= 24) {
+                needsReview = true; 
+            } else if (record.lastScore < 100 && elapsedHours >= 72) {
+                needsReview = true; 
+            } else if (record.lastScore === 100 && elapsedHours >= 168) {
+                needsReview = true; 
+            }
+
+            if (!needsReview) return; 
+
+        } else if (filterRank === "new") {
+            const record = history[data.id];
+            if (record) return; 
+
+        } else if (filterRank !== "all" && data.importance !== filterRank) {
             return;
         }
 
-        // 条件に合った最初の問題を記録
         if (firstValidIndex === -1) {
             firstValidIndex = index;
         }
@@ -2509,43 +2548,53 @@ function generateDropdown(filterRank) {
 
         const option = document.createElement("option");
         option.value = index;
-        option.text = `ID:${data.id}【${data.importance}】${data.term}`;
+        
+        let scoreText = "";
+        if (filterRank === "review" && history[data.id]) {
+            scoreText = ` [前回:${history[data.id].lastScore}点]`;
+        }
+        
+        option.text = `ID:${data.id}【${data.importance}】${data.term}${scoreText}`;
         currentOptGroup.appendChild(option);
     });
 
-    // 絞り込みの結果、1問でも見つかった場合はその最初の問題の答えをセット
     if (firstValidIndex !== -1) {
         currentModelAnswer = questionData[firstValidIndex].answer;
     } else {
         currentModelAnswer = "";
         const option = document.createElement("option");
-        option.text = "該当する問題がありません";
+        if (filterRank === "review") {
+            option.text = "復習が必要な問題はありません👏";
+        } else if (filterRank === "new") {
+            option.text = "すべての問題を解き終わりました🎉";
+        } else {
+            option.text = "該当する問題がありません";
+        }
         questionSelect.appendChild(option);
     }
     
-    // 絞り込みを変えたら、入力欄と前回結果をリセット
     document.getElementById("user-answer").value = "";
     document.getElementById("feedback-area").style.display = "none";
 }
 
-// アプリ起動時は「すべて表示」で生成
 generateDropdown("all");
 
-// 絞り込みメニュー（重要度）が変更された時の処理
 if (importanceFilter) {
     importanceFilter.addEventListener("change", function(e) {
-        generateDropdown(e.target.value); // 選ばれたランクで再生成
+        generateDropdown(e.target.value); 
     });
 }
 
-// 問題のプルダウンが変更された時の処理
 questionSelect.addEventListener("change", function(e) {
     const selectedIndex = e.target.value;
-    currentModelAnswer = questionData[selectedIndex].answer;
+    if(questionData[selectedIndex]) {
+        currentModelAnswer = questionData[selectedIndex].answer;
+    }
     
     document.getElementById("user-answer").value = "";
     document.getElementById("feedback-area").style.display = "none";
 });
+
 // --------------------------------------------------
 // 3. 音声入力の仕組み
 // --------------------------------------------------
@@ -2600,7 +2649,7 @@ if (SpeechRecognition) {
 // --------------------------------------------------
 document.getElementById("check-answer").addEventListener("click", function() {
     const userAnswer = textArea.value;
-    const diff = Diff.diffChars(currentModelAnswer, userAnswer);
+    const diff = Diff.diffChars(currentModelAnswer, userAnswer); 
     
     let resultHTML = "";
     let isPerfect = true;
@@ -2608,12 +2657,15 @@ document.getElementById("check-answer").addEventListener("click", function() {
     
     diff.forEach((part) => {
         if (part.added) {
-            resultHTML += "<del>" + part.value + "</del>";
+            // ユーザーが余分に入力した箇所（グレーの取り消し線）
+            resultHTML += "<del style='color: #a0a0a0;'>" + part.value + "</del>";
             isPerfect = false;
         } else if (part.removed) {
+            // 模範解答から抜け落ちている箇所（赤の太字）
             resultHTML += "<span style='color: #ff6b6b; font-weight: bold;'>" + part.value + "</span>";
             isPerfect = false;
         } else {
+            // 正解している箇所
             resultHTML += part.value;
             correctCount += part.value.length; 
         }
@@ -2621,13 +2673,21 @@ document.getElementById("check-answer").addEventListener("click", function() {
     
     let score = Math.round((correctCount / currentModelAnswer.length) * 100);
     
+    // 採点結果をlocalStorageに保存
+    const selectedIndex = questionSelect.value;
+    if (questionData[selectedIndex]) {
+        const questionId = questionData[selectedIndex].id;
+        saveHistory(questionId, score);
+    }
+    
+    // カラーコードと記号を使った採点表示
     if (isPerfect) {
-        resultHTML = "⭕️ 完璧です！【得点: 100 / 100点】<br><br>" + resultHTML;
+        resultHTML = "<span style='color: #4caf50; font-weight: bold;'>⭕️ 完璧です！</span>【得点: 100 / 100点】<br><br>" + resultHTML;
     } else {
-        resultHTML = "【得点: " + score + " / 100点】<br><br>" + resultHTML;
+        resultHTML = "<span style='color: #ff6b6b; font-weight: bold;'>❌</span>【得点: " + score + " / 100点】<br><br>" + resultHTML;
     }
     
     document.getElementById("result-area").innerHTML = "<p>" + resultHTML + "</p>";
-    document.getElementById("model-answer-area").innerHTML = "<p>" + currentModelAnswer + "</p>";
+    document.getElementById("model-answer-area").innerHTML = "<p><strong>【模範解答】</strong><br>" + currentModelAnswer + "</p>";
     document.getElementById("feedback-area").style.display = "block";
 });
