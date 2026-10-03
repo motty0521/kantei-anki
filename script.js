@@ -2,9 +2,10 @@
 // 鑑定評価基準 暗記アプリ 完全版コード
 // ==========================================
 
+// 🚨 ここにご自身で作成したID付きの408問のデータを上書きして貼り付けてください 🚨
 const questionData = [
-    
-    {
+   
+     {
         "id": 1,
         "term": "不動産",
         "answer": "不動産は、通常、土地とその定着物をいう。土地はその持つ有用性の故にすべての国民の生活と活動とに欠くことのできない基盤である。",
@@ -2454,24 +2455,7 @@ const questionData = [
     }
 
 ];
-// ==================================================
-// 1. 学習履歴を管理する関数群
-// ==================================================
-const STORAGE_KEY = "kantei_study_history";
 
-function getHistory() {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
-}
-
-function saveHistory(questionId, score) {
-    const history = getHistory();
-    history[questionId] = {
-        lastScore: score,
-        lastDate: Date.now() 
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-}
 // ==================================================
 // 1. 学習履歴を管理する関数群
 // ==================================================
