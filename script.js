@@ -2468,9 +2468,29 @@ function getHistory() {
 
 function saveHistory(questionId, score) {
     const history = getHistory();
+    let prevCount = 0;
+    
+    // 過去の記録があれば、連続100点の回数をチェック
+    if (history[questionId] && history[questionId].perfectCount) {
+        prevCount = history[questionId].perfectCount;
+    } else if (history[questionId] && history[questionId].lastScore === 100) {
+        prevCount = 1; // 過去の記録が100点なら1回目とみなす（データ引継ぎ用）
+    }
+
+    // 100点なら間隔を延ばし、95点以上なら現状維持、それ未満は容赦なく0リセット
+    let newCount = 0;
+    if (score === 100) {
+        newCount = prevCount + 1; // 完璧なら次のステップへ
+    } else if (score >= 95) {
+        newCount = prevCount; // 句読点などの微細なミスならペナルティなし（次回も同じ間隔）
+    } else {
+        newCount = 0; // キーワードの抜けなど（95点未満）は基礎が揺らいでいるので0リセット
+    }
+
     history[questionId] = {
         lastScore: score,
-        lastDate: Date.now() 
+        lastDate: Date.now(),
+        perfectCount: newCount // 連続正解回数を追加で保存する
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 }
@@ -2518,14 +2538,23 @@ function generateDropdown(filterRank) {
             let needsReview = false;
 
             // 🌟 忘却曲線のロジック（メモ付き）
+            const perfectCount = record.perfectCount || (record.lastScore === 100 ? 1 : 0);
+
             if (record.lastScore <= 50) {
                 needsReview = true;  // 50点以下はすぐ復習
             } else if (record.lastScore < 80 && elapsedHours >= 24) {
                 needsReview = true;  // 80点未満は1日経過で復習
             } else if (record.lastScore < 100 && elapsedHours >= 72) {
                 needsReview = true;  // 100点未満は3日経過で復習
-            } else if (record.lastScore === 100 && elapsedHours >= 168) {
-                needsReview = true;  // 100点は7日経過で復習
+            } else if (record.lastScore === 100) {
+                // 💯 100点の連続回数に応じて、復習間隔を延ばす
+                if (perfectCount === 1 && elapsedHours >= 168) {
+                    needsReview = true; // 1回目の100点 ➔ 7日後(168時間)に復習
+                } else if (perfectCount === 2 && elapsedHours >= 336) {
+                    needsReview = true; // 2連続100点 ➔ 14日後(336時間)に復習
+                } else if (perfectCount >= 3 && elapsedHours >= 720) {
+                    needsReview = true; // 3連続以上100点 ➔ 30日後(720時間)に復習
+                }
             }
 
             if (!needsReview) return; 
