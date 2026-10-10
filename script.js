@@ -2517,6 +2517,7 @@ function generateDropdown(filterRank) {
             const elapsedHours = (now - record.lastDate) / (1000 * 60 * 60);
             let needsReview = false;
 
+            // 🌟 忘却曲線のロジック（メモ付き）
             if (record.lastScore <= 50) {
                 needsReview = true;  // 50点以下はすぐ復習
             } else if (record.lastScore < 80 && elapsedHours >= 24) {
@@ -2525,7 +2526,6 @@ function generateDropdown(filterRank) {
                 needsReview = true;  // 100点未満は3日経過で復習
             } else if (record.lastScore === 100 && elapsedHours >= 168) {
                 needsReview = true;  // 100点は7日経過で復習
-
             }
 
             if (!needsReview) return; 
@@ -2660,15 +2660,12 @@ document.getElementById("check-answer").addEventListener("click", function() {
     
     diff.forEach((part) => {
         if (part.added) {
-            // ユーザーが余分に入力した箇所（グレーの取り消し線）
             resultHTML += "<del style='color: #a0a0a0;'>" + part.value + "</del>";
             isPerfect = false;
         } else if (part.removed) {
-            // 模範解答から抜け落ちている箇所（赤の太字）
             resultHTML += "<span style='color: #ff6b6b; font-weight: bold;'>" + part.value + "</span>";
             isPerfect = false;
         } else {
-            // 正解している箇所
             resultHTML += part.value;
             correctCount += part.value.length; 
         }
@@ -2676,14 +2673,12 @@ document.getElementById("check-answer").addEventListener("click", function() {
     
     let score = Math.round((correctCount / currentModelAnswer.length) * 100);
     
-    // 採点結果をlocalStorageに保存
     const selectedIndex = questionSelect.value;
     if (questionData[selectedIndex]) {
         const questionId = questionData[selectedIndex].id;
         saveHistory(questionId, score);
     }
     
-    // カラーコードと記号を使った採点表示
     if (isPerfect) {
         resultHTML = "<span style='color: #4caf50; font-weight: bold;'>⭕️ 完璧です！</span>【得点: 100 / 100点】<br><br>" + resultHTML;
     } else {
@@ -2694,11 +2689,11 @@ document.getElementById("check-answer").addEventListener("click", function() {
     document.getElementById("model-answer-area").innerHTML = "<p><strong>【模範解答】</strong><br>" + currentModelAnswer + "</p>";
     document.getElementById("feedback-area").style.display = "block";
 });
+
 // ==================================================
 // 5. データ引継ぎ（エクスポート / インポート）機能
 // ==================================================
 
-// 📤 書き出し（コピー）
 document.getElementById("export-btn").addEventListener("click", function() {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data || data === "{}") {
@@ -2706,27 +2701,22 @@ document.getElementById("export-btn").addEventListener("click", function() {
         return;
     }
     
-    // クリップボードにコピーする
     navigator.clipboard.writeText(data).then(() => {
         alert("✅ 学習履歴をコピーしました！\n\n別の端末（iPad等）を開き、「読み込む」ボタンを押して貼り付けてください。");
     }).catch(err => {
-        // コピーに失敗した場合の予備ルート
         prompt("以下のテキストをすべてコピーしてください:", data);
     });
 });
 
-// 📥 読み込み（ペースト）
 document.getElementById("import-btn").addEventListener("click", function() {
     const input = prompt("他の端末でコピーした学習履歴のテキストを、下の枠に貼り付け（ペースト）してください。");
     
     if (input) {
         try {
-            // 正しいデータ形式（JSON）かどうかのチェック
             JSON.parse(input);
-            // ローカルストレージを上書き
             localStorage.setItem(STORAGE_KEY, input);
             alert("🎉 学習履歴を無事に復元しました！画面を更新します。");
-            location.reload(); // 画面をリロードして反映
+            location.reload(); 
         } catch(e) {
             alert("❌ データの形式が正しくありません。正しくコピーできているか確認してください。");
         }
