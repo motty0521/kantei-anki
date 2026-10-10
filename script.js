@@ -2518,13 +2518,13 @@ function generateDropdown(filterRank) {
             let needsReview = false;
 
             if (record.lastScore <= 50) {
-                needsReview = true; 
+                needsReview = true;  // 50点以下はすぐ復習
             } else if (record.lastScore < 80 && elapsedHours >= 24) {
-                needsReview = true; 
+                needsReview = true;  // 80点未満は1日経過で復習
             } else if (record.lastScore < 100 && elapsedHours >= 72) {
-                needsReview = true; 
+                needsReview = true;  // 100点未満は3日経過で復習
             } else if (record.lastScore === 100 && elapsedHours >= 168) {
-                needsReview = true; 
+                needsReview = true;  // 100点は7日経過で復習
             }
 
             if (!needsReview) return; 
