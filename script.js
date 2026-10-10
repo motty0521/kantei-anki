@@ -2525,6 +2525,7 @@ function generateDropdown(filterRank) {
                 needsReview = true;  // 100点未満は3日経過で復習
             } else if (record.lastScore === 100 && elapsedHours >= 168) {
                 needsReview = true;  // 100点は7日経過で復習
+
             }
 
             if (!needsReview) return; 
@@ -2573,6 +2574,24 @@ function generateDropdown(filterRank) {
             option.text = "該当する問題がありません";
         }
         questionSelect.appendChild(option);
+    }
+    
+    document.getElementById("user-answer").value = "";
+    document.getElementById("feedback-area").style.display = "none";
+}
+
+generateDropdown("all");
+
+if (importanceFilter) {
+    importanceFilter.addEventListener("change", function(e) {
+        generateDropdown(e.target.value); 
+    });
+}
+
+questionSelect.addEventListener("change", function(e) {
+    const selectedIndex = e.target.value;
+    if(questionData[selectedIndex]) {
+        currentModelAnswer = questionData[selectedIndex].answer;
     }
     
     document.getElementById("user-answer").value = "";
