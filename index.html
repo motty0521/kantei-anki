@@ -107,41 +107,39 @@
         <div id="model-answer-area"></div>
     </div>
 
-    <!-- 🌟 ここから追加：データ引継ぎエリア 🌟 -->
-    <hr style="margin-top: 40px; border: none; border-top: 1px dashed #ccc;">
+   
+<!-- 前略：データ引継ぎエリア -->
+   <hr style="margin-top: 40px; border: none; border-top: 1px dashed #ccc;">
     <h2>【データ引継ぎ（PC ↔ iPad）】</h2>
-    <p style="font-size: 0.9em; color: #666;">※Apple製品同士なら、片方でコピーしてもう片方でペーストできます。</p>
-    <button id="export-btn">📤 学習履歴をコピーして書き出す</button>
+    <p style="font-size: 0.9em; color: #666;">※Apple製品同士なら、片方でコピーしてもう片方でペーストできます。</p>  <button id="export-btn">📤 学習履歴をコピーして書き出す</button>
     <button id="import-btn">📥 コピーした履歴を読み込む</button>
-    <!-- 🌟 ここまで追加 🌟 -->
-   <!-- ⭕️ ここから書き換え：システム動作テスト用ボタン ⭕️ -->
+
+    <!-- ⭕️ ここから追加：システム動作テスト用ボタン ⭕️ -->
     <hr style="margin-top: 40px; border: none; border-top: 1px dashed #ccc;">
     <h2>【システム動作テスト用】</h2>
-    
-    <div style="display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
-        <!-- 時計を進めるボタン -->
-        <button onclick="
-            if (!window.dayOffset) window.dayOffset = 0;
-            window.dayOffset += 24 * 60 * 60 * 1000;
-            if (!window.originalDateNow) window.originalDateNow = Date.now;
-            
-            Date.now = function() { return window.originalDateNow() + window.dayOffset; };
-            
-            const filter = document.getElementById('importance-filter');
-            filter.value = 'review';
-            filter.dispatchEvent(new Event('change'));
-            
-            document.getElementById('check-answer').disabled = true;
-            document.getElementById('check-answer').innerText = '🔒 テスト中は採点できません';
-            
-            alert('⏰ アプリ内の時計を【 ' + (window.dayOffset / (24*60*60*1000)) + '日後 】に進めました！\n\n復習モードに「その日に復活する予定の問題」が表示されています。');
-        " style="background-color: #ff9800; color: white; padding: 10px 15px; font-weight: bold; border: none; border-radius: 5px;">
-        ⏩ 時計を1日進める
-        </button>
+    <button onclick="
+        if (!window.dayOffset) window.dayOffset = 0;
+        window.dayOffset += 24 * 60 * 60 * 1000; // 24時間をミリ秒で足す
+        if (!window.originalDateNow) window.originalDateNow = Date.now;
+        
+        // アプリ内の時計を強制的に未来に書き換える
+        Date.now = function() { return window.originalDateNow() + window.dayOffset; };
+        
+        // 強制的に復習モードに切り替えてリストを更新
+        const filter = document.getElementById('importance-filter');
+        filter.value = 'review';
+        filter.dispatchEvent(new Event('change'));
+        
+        // 未来の日付で履歴が上書きされるのを防ぐため、採点ボタンをロック
+        document.getElementById('check-answer').disabled = true;
+        document.getElementById('check-answer').innerText = '🔒 テスト中は採点できません';
+        
+        alert('⏰ アプリ内の時計を【 ' + (window.dayOffset / (24*60*60*1000)) + '日後 】に進めました！\n\n復習モードに「その日に復活する予定の問題」が表示されています。\n※元に戻すには画面を更新（リロード）してください。');
+    " style="background-color: #ff9800; color: white; padding: 10px 15px; font-weight: bold; border: none; border-radius: 5px; margin-bottom: 30px;">
+    ⏩ 時計を1日進める（明日をシミュレーション）
+    </button>
+    <!-- ⭕️ ここまで追加 ⭕️ -->
 
-        <!-- 現実の時間に戻すボタン（新規追加） -->
-        <button onclick="location.reload();" style="background-color: #607d8b; color: white; padding: 10px 15px; font-weight: bold; border: none; border-radius: 5px;">
-        🔄 現実の時間に戻す
-        </button>
-    </div>
-    <!-- ⭕️ ここまで書き換え ⭕️ -->
+    <script src="script.js"></script>
+</body>
+</html>
