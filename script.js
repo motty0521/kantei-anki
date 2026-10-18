@@ -2680,8 +2680,10 @@ if (SpeechRecognition) {
 // 4. 採点システムの仕組み
 // --------------------------------------------------
 document.getElementById("check-answer").addEventListener("click", function() {
-    const userAnswer = textArea.value;
-    const diff = Diff.diffChars(currentModelAnswer, userAnswer); 
+    // 修正1: 入力と模範解答の前後にある見えない空白や改行を自動削除
+    const userAnswer = textArea.value.trim();
+    const modelAnswer = currentModelAnswer.trim();
+    const diff = Diff.diffChars(modelAnswer, userAnswer); 
     
     let resultHTML = "";
     let isPerfect = true;
@@ -2700,7 +2702,13 @@ document.getElementById("check-answer").addEventListener("click", function() {
         }
     });
     
-    let score = Math.round((correctCount / currentModelAnswer.length) * 100);
+    // 修正2: 四捨五入ではなく切り捨て（floor）に変更
+    let score = Math.floor((correctCount / modelAnswer.length) * 100);
+    
+    // 完全に一致した時だけ明示的に100点とする
+    if (isPerfect) {
+        score = 100;
+    }
     
     const selectedIndex = questionSelect.value;
     if (questionData[selectedIndex]) {
