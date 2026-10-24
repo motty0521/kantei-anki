@@ -2680,14 +2680,23 @@ if (SpeechRecognition) {
 // 4. 採点システムの仕組み
 // --------------------------------------------------
 document.getElementById("check-answer").addEventListener("click", function() {
-    // 修正1: 入力と模範解答の前後にある見えない空白や改行を自動削除
-    const userAnswer = textArea.value.trim();
-    const modelAnswer = currentModelAnswer.trim();
+    
+    // 🌟 追加：採点前に「全角/半角の違い」や「スペース」を自動で統一（正規化）する
+    let userAnswer = textArea.value;
+    let modelAnswer = currentModelAnswer;
+
+    // スペース（全角・半角）をすべて削除し、全角カッコ（）を半角カッコ()に統一する
+    userAnswer = userAnswer.replace(/[\s ]/g, "").replace(/（/g, "(").replace(/）/g, ")");
+    modelAnswer = modelAnswer.replace(/[\s ]/g, "").replace(/（/g, "(").replace(/）/g, ")");
+
+    // 統一したテキスト同士で比較を行う
     const diff = Diff.diffChars(modelAnswer, userAnswer); 
     
     let resultHTML = "";
     let isPerfect = true;
     let correctCount = 0;
+
+    
     
     diff.forEach((part) => {
         if (part.added) {
