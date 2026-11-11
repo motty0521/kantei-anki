@@ -2533,9 +2533,6 @@ function generateDropdown(filterRank) {
             const record = history[data.id];
             if (!record) return; 
             
-            const now = Date.now();
-            const elapsedHours = (now - record.lastDate) / (1000 * 60 * 60);
-            let needsReview = false;
 
             // 🌟 忘却曲線のロジック（日付・カレンダー単位ベースに修正）
             const now = new Date();
