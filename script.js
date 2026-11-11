@@ -1022,7 +1022,7 @@ const questionData = [
     {
         "id": 170,
         "term": "原価法",
-        "answer": "原価法は、価格時点における対象不動産の再調達原価を求め、この再調達原価について減価修正を行って対象不動産の試算価格を求める手法である(この手法による試算価格を積算価格という。)。",
+        "answer": "原価法は、価格時点における対象不動産の再調達原価を求め、この再調達原価について減価修正を行って対象不動産の試算価格(積算価格)を求める手法である。",
         "importance": "S"
     },
     {
@@ -1178,7 +1178,7 @@ const questionData = [
     {
         "id": 196,
         "term": "収益還元法",
-        "answer": "収益還元法は、対象不動産が将来生み出すであろうと期待される純収益の現在価値の総和を求めることにより対象不動産の試算価格を求める手法である(この手法による試算価格を収益価格という。)。",
+        "answer": "収益還元法は、対象不動産が将来生み出すであろうと期待される純収益の現在価値の総和を求めることにより対象不動産の試算価格(収益価格)を求める手法である。",
         "importance": "S"
     },
     {
@@ -1322,7 +1322,7 @@ const questionData = [
     {
         "id": 220,
         "term": "積算法",
-        "answer": "積算法は、対象不動産について、価格時点における基礎価格を求め、これに期待利回りを乗じて得た額に必要諸経費等を加算して対象不動産の試算賃料を求める手法である(この手法による試算賃料を積算賃料という。)。",
+        "answer": "積算法は、対象不動産について、価格時点における基礎価格を求め、これに期待利回りを乗じて得た額に必要諸経費等を加算して対象不動産の試算賃料（積算賃料）を求める手法である。",
         "importance": "S"
     },
     {
@@ -1352,7 +1352,7 @@ const questionData = [
     {
         "id": 225,
         "term": "賃貸事例比較法",
-        "answer": "賃貸事例比較法は、まず多数の新規の賃貸借等の事例を収集して適切な事例の選択を行い、これらに係る実際実質賃料に必要に応じて事情補正及び時点修正を行い、かつ、地域要因の比較及び個別的要因の比較を行って求められた賃料を比較考量し、これによって対象不動産の試算賃料を求める手法である(この手法による試算賃料を比準賃料という。)。",
+        "answer": "賃貸事例比較法は、まず多数の新規の賃貸借等の事例を収集して適切な事例の選択を行い、これらに係る実際実質賃料に必要に応じて事情補正及び時点修正を行い、かつ、地域要因の比較及び個別的要因の比較を行って求められた賃料を比較考量し、これによって対象不動産の試算賃料（比凖賃料）を求める手法である。",
         "importance": "S"
     },
     {
@@ -1364,7 +1364,7 @@ const questionData = [
     {
         "id": 227,
         "term": "収益分析法",
-        "answer": "収益分析法は、一般の企業経営に基づく総収益を分析して対象不動産が一定期間に生み出すであろうと期待される純収益(減価償却後のものとし、これを収益純賃料という。)を求め、これに必要諸経費等を加算して対象不動産の試算賃料を求める手法である(この手法による試算賃料を収益賃料という。)。",
+        "answer": "収益分析法は、一般の企業経営に基づく総収益を分析して対象不動産が一定期間に生み出すであろうと期待される純収益(減価償却後のものとし、これを収益純賃料という。)を求め、これに必要諸経費等を加算して対象不動産の試算賃料(収益賃料)を求める手法である。",
         "importance": "S"
     },
     {
@@ -2432,7 +2432,7 @@ const questionData = [
     {
         "id": 405,
         "term": "取引事例比較法",
-        "answer": "取引事例比較法は、まず多数の取引事例を収集して適切な事例の選択を行い、これらに係る取引価格に必要に応じて事情補正及び時点修正を行い、かつ、地域要因の比較及び個別的要因の比較を行って求められた価格を比較考量し、これによって対象不動産の試算価格を求める手法である(この手法による試算価格を比準価格という。)。",
+        "answer": "取引事例比較法は、まず多数の取引事例を収集して適切な事例の選択を行い、これらに係る取引価格に必要に応じて事情補正及び時点修正を行い、かつ、地域要因の比較及び個別的要因の比較を行って求められた価格を比較考量し、これによって対象不動産の試算価格(比準価格）を求める手法である。",
         "importance": "S"
     },
     {
@@ -2537,25 +2537,36 @@ function generateDropdown(filterRank) {
             const elapsedHours = (now - record.lastDate) / (1000 * 60 * 60);
             let needsReview = false;
 
-            // 🌟 忘却曲線のロジック（メモ付き）
+            // 🌟 忘却曲線のロジック（日付・カレンダー単位ベースに修正）
+            const now = new Date();
+            const last = new Date(record.lastDate);
+            
+            // 時・分・秒を無視して「日付（年月日）」だけにする（午前0時基準）
+            const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const lastZero = new Date(last.getFullYear(), last.getMonth(), last.getDate()).getTime();
+            
+            // 経過した「日数」を計算（0=当日、1=翌日、3=3日後...）
+            const elapsedDays = (todayZero - lastZero) / (1000 * 60 * 60 * 24);
+            let needsReview = false;
+
             const perfectCount = record.perfectCount || (record.lastScore === 100 ? 1 : 0);
 
             if (record.lastScore <= 50) {
-                needsReview = true;  // 50点以下はすぐ復習
-            } else if (record.lastScore < 80 && elapsedHours >= 24) {
-                needsReview = true;  // 80点未満は1日経過で復習
-            } else if (record.lastScore < 100 && elapsedHours >= 72) {
-                needsReview = true;  // 100点未満は3日経過で復習
+                needsReview = true;  // 50点以下はすぐ復習（当日中）
+            } else if (record.lastScore < 80 && elapsedDays >= 1) {
+                needsReview = true;  // 80点未満は【翌日】になれば復習可能
+            } else if (record.lastScore < 100 && elapsedDays >= 3) {
+                needsReview = true;  // 100点未満は【3日後】になれば復習可能
             } else if (record.lastScore === 100) {
-                // 💯 100点の連続回数に応じて、復習間隔を延ばす
-                if (perfectCount === 1 && elapsedHours >= 168) {
-                    needsReview = true; // 1回目の100点 ➔ 7日後(168時間)に復習
-                } else if (perfectCount === 2 && elapsedHours >= 336) {
-                    needsReview = true; // 2連続100点 ➔ 14日後(336時間)に復習
-                } else if (perfectCount >= 3 && elapsedHours >= 720) {
-                    needsReview = true; // 3連続以上100点 ➔ 30日後(720時間)に復習
+                if (perfectCount === 1 && elapsedDays >= 7) {
+                    needsReview = true; // 1回クリア ➔ 【7日後】から
+                } else if (perfectCount === 2 && elapsedDays >= 14) {
+                    needsReview = true; // 2連続クリア ➔ 【14日後】から
+                } else if (perfectCount >= 3 && elapsedDays >= 30) {
+                    needsReview = true; // 3連続以上 ➔ 【30日後】から
                 }
             }
+           
 
             if (!needsReview) return; 
 
