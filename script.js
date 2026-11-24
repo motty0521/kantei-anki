@@ -2801,20 +2801,27 @@ document.getElementById("import-btn").addEventListener("click", function() {
 });
 
 // ==================================================
-// 6. 答えだけ見る機能（点数を記録しない）
+// 6. 答えだけ見る機能（確認済みとして60点記録し、明日また復習に出す）
 // ==================================================
 const peekBtn = document.getElementById("peek-answer-btn");
 if (peekBtn) {
     peekBtn.addEventListener("click", function() {
         if (!currentModelAnswer) return;
-        document.getElementById("result-area").innerHTML = "<p>👀 模範解答の確認のみ（点数は記録されません）</p>";
+
+        // 内部的に60点（今日確認済み・明日復活）として記録する
+        const selectedIndex = questionSelect.value;
+        if (questionData[selectedIndex]) {
+            const questionId = questionData[selectedIndex].id;
+            saveHistory(questionId, 60);
+        }
+
+        document.getElementById("result-area").innerHTML = "<p>👀 模範解答を確認しました（今日のリストから消え、明日また復習に出ます）</p>";
         document.getElementById("model-answer-area").innerHTML = "<p><strong>【模範解答】</strong><br>" + currentModelAnswer + "</p>";
         document.getElementById("feedback-area").style.display = "block";
     });
 }
-
 // ==================================================
-// 7. 問題・模範解答の修正機能（端末内に上書き保存）
+// 7. 問題・模範解答・重要度の修正機能（端末内に上書き保存）
 // ==================================================
 const CUSTOM_EDITS_KEY = "kantei_custom_edits";
 
@@ -2828,6 +2835,7 @@ function applyCustomEdits() {
         if (edits[item.id]) {
             if (edits[item.id].term) item.term = edits[item.id].term;
             if (edits[item.id].answer) item.answer = edits[item.id].answer;
+            if (edits[item.id].importance) item.importance = edits[item.id].importance;
         }
     });
 }
@@ -2847,15 +2855,20 @@ if (editBtn) {
             return;
         }
 
-        // 1. 問題文（用語）の修正
+        // 1. 重要度（ランク）の修正
+        const newImportance = prompt("【重要度（ランク）の修正】S / A / B / C などを入力してください。\n変更しない場合はそのままOKを押してください。", target.importance);
+        if (newImportance === null) return; // キャンセルされたら中止
+
+        // 2. 問題文（用語）の修正
         const newTerm = prompt("【問題文の修正】変更しない場合はそのままOKを押してください。", target.term);
-        if (newTerm === null) return; // キャンセルされたら中止
+        if (newTerm === null) return;
 
-        // 2. 模範解答の修正
+        // 3. 模範解答の修正
         const newAnswer = prompt("【模範解答の修正】変更しない場合はそのままOKを押してください。", target.answer);
-        if (newAnswer === null) return; // キャンセルされたら中止
+        if (newAnswer === null) return;
 
-        // メモリ上のデータを即座に書き換え
+        // メモリ上のデータを即座に書き換え（小文字のsなどを入力しても自動でSに統一）
+        target.importance = newImportance.trim().toUpperCase();
         target.term = newTerm.trim();
         target.answer = newAnswer.trim();
         currentModelAnswer = target.answer;
@@ -2864,6 +2877,7 @@ if (editBtn) {
         const saved = localStorage.getItem(CUSTOM_EDITS_KEY);
         const edits = saved ? JSON.parse(saved) : {};
         edits[target.id] = {
+            importance: target.importance,
             term: target.term,
             answer: target.answer
         };
@@ -2871,9 +2885,74 @@ if (editBtn) {
 
         // 画面の表示を更新
         generateDropdown(importanceFilter ? importanceFilter.value : "all");
-        questionSelect.value = selectedIndex; // 修正した問題を再選択
-        currentModelAnswer = target.answer;
+        // ランク変更で現在の絞り込みリストから外れていなければ、同じ問題を再選択
+        if (questionSelect.querySelector(`option[value="${selectedIndex}"]`)) {
+            questionSelect.value = selectedIndex;
+            currentModelAnswer = target.answer;
+        }
 
-        alert("✅ ID:" + target.id + " のデータを修正しました！（※この端末内に保存されています）");
+        alert(`✅ ID:${target.id}（重要度:${target.importance}）のデータを修正しました！`);
+    });
+}
+
+// ==================================================
+// 8. 修正した箇所の一覧をテキストで書き出す機能（Macでの本体修正用）
+// ==================================================
+const exportEditsBtn = document.getElementById("export-edits-list-btn");
+if (exportEditsBtn) {
+    exportEditsBtn.addEventListener("click", function() {
+        const saved = localStorage.getItem("kantei_custom_edits");
+        if (!saved || saved === "{}") {
+            alert("現在、アプリ上で修正された問題はありません。");
+            return;
+        }
+
+        const edits = JSON.parse(saved);
+        let reportText = "=== 修正した問題の一覧 ===\n\n";
+
+        // ID順に並べて見やすいテキストにまとめる
+        Object.keys(edits).sort((a, b) => Number(a) - Number(b)).forEach(id => {
+            reportText += `【ID: ${id}】\n`;
+            if (edits[id].importance) {
+                reportText += `重要度: ${edits[id].importance}\n`;
+            }
+            reportText += `問題: ${edits[id].term}\n`;
+            reportText += `答え: ${edits[id].answer}\n`;
+            reportText += "----------------------------------\n";
+        });
+
+        navigator.clipboard.writeText(reportText).then(() => {
+            alert("✅ 修正した箇所の一覧をコピーしました！\nメモ帳などに貼り付けて、Macでの本体修正にお使いください。");
+        }).catch(err => {
+            prompt("以下のテキストをすべてコピーしてください:", reportText);
+        });
+    });
+}
+
+
+// ==================================================
+// 9. 仮の修正データをリセット（消去）する機能
+// ==================================================
+const resetEditsBtn = document.getElementById("reset-edits-btn");
+if (resetEditsBtn) {
+    resetEditsBtn.addEventListener("click", function() {
+        const saved = localStorage.getItem("kantei_custom_edits");
+        if (!saved || saved === "{}") {
+            alert("リセットする仮の修正データはありません。");
+            return;
+        }
+
+        // 誤操作を防ぐための確認メッセージ
+        const isConfirmed = confirm(
+            "アプリ内に溜まった「仮の修正データ」をすべて消去しますか？\n\n" +
+            "※学習履歴（点数や復習日）は消えませんのでご安心ください。\n" +
+            "※Macで本体データの修正・アップロードが終わってから実行してください。"
+        );
+
+        if (isConfirmed) {
+            localStorage.removeItem("kantei_custom_edits");
+            alert("🗑️ 仮の修正データをリセットしました！最新の本体データを読み込みます。");
+            location.reload();
+        }
     });
 }
