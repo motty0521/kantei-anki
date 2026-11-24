@@ -2825,6 +2825,16 @@ if (peekBtn) {
 // ==================================================
 const CUSTOM_EDITS_KEY = "kantei_custom_edits";
 
+// 🌟 追加：修正前の「元のデータ（GitHub本体）」を控えておく箱
+const originalQuestionMap = {};
+questionData.forEach(item => {
+    originalQuestionMap[item.id] = {
+        importance: item.importance,
+        term: item.term,
+        answer: item.answer
+    };
+});
+
 // 保存されている修正データを読み込んで、問題リストに反映する関数
 function applyCustomEdits() {
     const saved = localStorage.getItem(CUSTOM_EDITS_KEY);
@@ -2855,25 +2865,20 @@ if (editBtn) {
             return;
         }
 
-        // 1. 重要度（ランク）の修正
         const newImportance = prompt("【重要度（ランク）の修正】S / A / B / C などを入力してください。\n変更しない場合はそのままOKを押してください。", target.importance);
-        if (newImportance === null) return; // キャンセルされたら中止
+        if (newImportance === null) return;
 
-        // 2. 問題文（用語）の修正
         const newTerm = prompt("【問題文の修正】変更しない場合はそのままOKを押してください。", target.term);
         if (newTerm === null) return;
 
-        // 3. 模範解答の修正
         const newAnswer = prompt("【模範解答の修正】変更しない場合はそのままOKを押してください。", target.answer);
         if (newAnswer === null) return;
 
-        // メモリ上のデータを即座に書き換え（小文字のsなどを入力しても自動でSに統一）
         target.importance = newImportance.trim().toUpperCase();
         target.term = newTerm.trim();
         target.answer = newAnswer.trim();
         currentModelAnswer = target.answer;
 
-        // 端末（localStorage）に保存
         const saved = localStorage.getItem(CUSTOM_EDITS_KEY);
         const edits = saved ? JSON.parse(saved) : {};
         edits[target.id] = {
@@ -2883,9 +2888,7 @@ if (editBtn) {
         };
         localStorage.setItem(CUSTOM_EDITS_KEY, JSON.stringify(edits));
 
-        // 画面の表示を更新
         generateDropdown(importanceFilter ? importanceFilter.value : "all");
-        // ランク変更で現在の絞り込みリストから外れていなければ、同じ問題を再選択
         if (questionSelect.querySelector(`option[value="${selectedIndex}"]`)) {
             questionSelect.value = selectedIndex;
             currentModelAnswer = target.answer;
@@ -2896,7 +2899,7 @@ if (editBtn) {
 }
 
 // ==================================================
-// 8. 修正した箇所の一覧をテキストで書き出す機能（Macでの本体修正用）
+// 8. 修正した箇所の一覧をテキストで書き出す機能（差分表示バージョン）
 // ==================================================
 const exportEditsBtn = document.getElementById("export-edits-list-btn");
 if (exportEditsBtn) {
@@ -2908,27 +2911,67 @@ if (exportEditsBtn) {
         }
 
         const edits = JSON.parse(saved);
-        let reportText = "=== 修正した問題の一覧 ===\n\n";
+        let reportText = "=== 修正した箇所の一覧（変更点のみ） ===\n\n";
+        let hasAnyDiff = false;
 
-        // ID順に並べて見やすいテキストにまとめる
         Object.keys(edits).sort((a, b) => Number(a) - Number(b)).forEach(id => {
-            reportText += `【ID: ${id}】\n`;
-            if (edits[id].importance) {
-                reportText += `重要度: ${edits[id].importance}\n`;
+            const orig = originalQuestionMap[id];
+            const edit = edits[id];
+            if (!orig) return;
+
+            let itemDiffText = "";
+
+            // 1. 重要度の変更チェック
+            if (edit.importance && edit.importance !== orig.importance) {
+                itemDiffText += `・重要度: ${orig.importance} ➔ ${edit.importance}\n`;
             }
-            reportText += `問題: ${edits[id].term}\n`;
-            reportText += `答え: ${edits[id].answer}\n`;
-            reportText += "----------------------------------\n";
+
+            // 2. 問題文の変更チェック
+            if (edit.term && edit.term !== orig.term) {
+                itemDiffText += `・問題文:\n  [前] ${orig.term}\n  [後] ${edit.term}\n`;
+            }
+
+            // 3. 模範解答の変更チェック（どこを変えたか印をつける）
+            if (edit.answer && edit.answer !== orig.answer) {
+                let diffMarked = "";
+                if (typeof Diff !== "undefined") {
+                    const diffs = Diff.diffChars(orig.answer, edit.answer);
+                    diffs.forEach(part => {
+                        if (part.removed) {
+                            diffMarked += `【削:${part.value}】`;
+                        } else if (part.added) {
+                            diffMarked += `【追:${part.value}】`;
+                        } else {
+                            diffMarked += part.value;
+                        }
+                    });
+                } else {
+                    diffMarked = edit.answer;
+                }
+                itemDiffText += `・模範解答（変更点）:\n  ${diffMarked}\n`;
+                itemDiffText += `・模範解答（コピペ用全文）:\n  ${edit.answer}\n`;
+            }
+
+            if (itemDiffText !== "") {
+                hasAnyDiff = true;
+                reportText += `■ ID: ${id}（${edit.term || orig.term}）\n`;
+                reportText += itemDiffText;
+                reportText += "----------------------------------\n";
+            }
         });
 
+        if (!hasAnyDiff) {
+            alert("元のデータと異なる変更点はありませんでした。");
+            return;
+        }
+
         navigator.clipboard.writeText(reportText).then(() => {
-            alert("✅ 修正した箇所の一覧をコピーしました！\nメモ帳などに貼り付けて、Macでの本体修正にお使いください。");
+            alert("✅ 変更点の一覧をコピーしました！\nメモ帳に貼り付けて確認してください。");
         }).catch(err => {
             prompt("以下のテキストをすべてコピーしてください:", reportText);
         });
     });
 }
-
 
 // ==================================================
 // 9. 仮の修正データをリセット（消去）する機能
