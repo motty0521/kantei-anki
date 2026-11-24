@@ -2749,30 +2749,131 @@ document.getElementById("check-answer").addEventListener("click", function() {
 // ==================================================
 
 document.getElementById("export-btn").addEventListener("click", function() {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data || data === "{}") {
-        alert("書き出す学習履歴がありません。");
+    const historyData = localStorage.getItem(STORAGE_KEY);
+    const editsData = localStorage.getItem("kantei_custom_edits");
+
+    if ((!historyData || historyData === "{}") && (!editsData || editsData === "{}")) {
+        alert("書き出すデータがありません。");
         return;
     }
-    
-    navigator.clipboard.writeText(data).then(() => {
-        alert("✅ 学習履歴をコピーしました！\n\n別の端末（iPad等）を開き、「読み込む」ボタンを押して貼り付けてください。");
+
+    // 学習履歴と修正データを1つのセットにまとめる
+    const exportBundle = {
+        history: historyData ? JSON.parse(historyData) : {},
+        customEdits: editsData ? JSON.parse(editsData) : {}
+    };
+
+    const jsonString = JSON.stringify(exportBundle);
+
+    navigator.clipboard.writeText(jsonString).then(() => {
+        alert("✅ 学習履歴と修正データをまとめてコピーしました！\n\n別の端末（iPad等）を開き、「読み込む」ボタンを押して貼り付けてください。");
     }).catch(err => {
-        prompt("以下のテキストをすべてコピーしてください:", data);
+        prompt("以下のテキストをすべてコピーしてください:", jsonString);
     });
 });
 
 document.getElementById("import-btn").addEventListener("click", function() {
-    const input = prompt("他の端末でコピーした学習履歴のテキストを、下の枠に貼り付け（ペースト）してください。");
+    const input = prompt("他の端末でコピーしたデータのテキストを、下の枠に貼り付け（ペースト）してください。");
     
     if (input) {
         try {
-            JSON.parse(input);
-            localStorage.setItem(STORAGE_KEY, input);
-            alert("🎉 学習履歴を無事に復元しました！画面を更新します。");
+            const parsed = JSON.parse(input);
+
+            // 新形式（セット）か旧形式（学習履歴のみ）かを自動判定して復元
+            if (parsed.history !== undefined || parsed.customEdits !== undefined) {
+                if (parsed.history) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed.history));
+                }
+                if (parsed.customEdits) {
+                    localStorage.setItem("kantei_custom_edits", JSON.stringify(parsed.customEdits));
+                }
+            } else {
+                // 古い形式のデータもそのまま復元
+                localStorage.setItem(STORAGE_KEY, input);
+            }
+
+            alert("🎉 学習履歴と修正データを無事に復元しました！画面を更新します。");
             location.reload(); 
         } catch(e) {
             alert("❌ データの形式が正しくありません。正しくコピーできているか確認してください。");
         }
     }
 });
+
+// ==================================================
+// 6. 答えだけ見る機能（点数を記録しない）
+// ==================================================
+const peekBtn = document.getElementById("peek-answer-btn");
+if (peekBtn) {
+    peekBtn.addEventListener("click", function() {
+        if (!currentModelAnswer) return;
+        document.getElementById("result-area").innerHTML = "<p>👀 模範解答の確認のみ（点数は記録されません）</p>";
+        document.getElementById("model-answer-area").innerHTML = "<p><strong>【模範解答】</strong><br>" + currentModelAnswer + "</p>";
+        document.getElementById("feedback-area").style.display = "block";
+    });
+}
+
+// ==================================================
+// 7. 問題・模範解答の修正機能（端末内に上書き保存）
+// ==================================================
+const CUSTOM_EDITS_KEY = "kantei_custom_edits";
+
+// 保存されている修正データを読み込んで、問題リストに反映する関数
+function applyCustomEdits() {
+    const saved = localStorage.getItem(CUSTOM_EDITS_KEY);
+    if (!saved) return;
+    const edits = JSON.parse(saved);
+    
+    questionData.forEach(item => {
+        if (edits[item.id]) {
+            if (edits[item.id].term) item.term = edits[item.id].term;
+            if (edits[item.id].answer) item.answer = edits[item.id].answer;
+        }
+    });
+}
+
+// アプリ起動時に修正データを反映させ、プルダウンを再描画する
+applyCustomEdits();
+generateDropdown(importanceFilter ? importanceFilter.value : "all");
+
+// 「✏️ 問題・答えを修正」ボタンが押された時の動き
+const editBtn = document.getElementById("edit-question-btn");
+if (editBtn) {
+    editBtn.addEventListener("click", function() {
+        const selectedIndex = questionSelect.value;
+        const target = questionData[selectedIndex];
+        if (!target) {
+            alert("修正する問題が選択されていません。");
+            return;
+        }
+
+        // 1. 問題文（用語）の修正
+        const newTerm = prompt("【問題文の修正】変更しない場合はそのままOKを押してください。", target.term);
+        if (newTerm === null) return; // キャンセルされたら中止
+
+        // 2. 模範解答の修正
+        const newAnswer = prompt("【模範解答の修正】変更しない場合はそのままOKを押してください。", target.answer);
+        if (newAnswer === null) return; // キャンセルされたら中止
+
+        // メモリ上のデータを即座に書き換え
+        target.term = newTerm.trim();
+        target.answer = newAnswer.trim();
+        currentModelAnswer = target.answer;
+
+        // 端末（localStorage）に保存
+        const saved = localStorage.getItem(CUSTOM_EDITS_KEY);
+        const edits = saved ? JSON.parse(saved) : {};
+        edits[target.id] = {
+            term: target.term,
+            answer: target.answer
+        };
+        localStorage.setItem(CUSTOM_EDITS_KEY, JSON.stringify(edits));
+
+        // 画面の表示を更新
+        generateDropdown(importanceFilter ? importanceFilter.value : "all");
+        questionSelect.value = selectedIndex; // 修正した問題を再選択
+        currentModelAnswer = target.answer;
+
+        alert("✅ ID:" + target.id + " のデータを修正しました！（※この端末内に保存されています）");
+    });
+}
